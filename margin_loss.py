@@ -1,21 +1,20 @@
-import os
-import time
-import random
-
 import argparse
-import numpy as np
+import os
+import random
+import time
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-
 import utils.config as config
-from utils.dataset import CelebaDataset, WaterBirds
-from utils.utils import compute_accuracy, save_state_dict
+from torch.utils.data import DataLoader
 from utils.clustering import get_margins, obtain_and_evaluate_clusters
+from utils.dataset import CelebaDataset, WaterBirds, WaterBirdsActual
+from utils.utils import compute_accuracy, save_state_dict
 
 from models.basemodel import Network, NetworkMargin
+
 
 def parse_args():
     # Parse the arguments
@@ -24,7 +23,9 @@ def parse_args():
     parser.add_argument('--type', type=str, default='baseline',
                         help='baseline or adversarial')
     parser.add_argument('--dataset', type=str, default='celeba',
-                        help='which dataset to train on?')              
+                        help='which dataset to train on?')   
+    parser.add_argument('--bias', action='store_true',
+                        help='bias-amplify the model?')           
     parser.add_argument('--clustering', action='store_true',
                         help='only cluster')
     parser.add_argument('--train', action='store_true',
@@ -55,10 +56,25 @@ def read_data(args):
             train_dataset = WaterBirds(split='train')
             valid_dataset = WaterBirds(split='val')
             test_dataset = WaterBirds(split='test')
+
+        if args.bias:
+            class_sample_count = train_dataset.class_sample_count
+            weight = 1. / class_sample_count
+            samples_weight = np.array([weight[t] for t in train_dataset.targets])
+            samples_weight = torch.from_numpy(samples_weight)
+            samples_weight = samples_weight.double()
+            sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
+            print(samples_weight.shape)
+            shuffle = False
+            sampler = sampler
+        else:
+            shuffle = True
+            sampler = None
             
         train_loader = DataLoader(dataset=train_dataset,
                             batch_size=batch_size,
-                            shuffle=True,
+                            shuffle=shuffle,
+                            sampler=sampler
                             num_workers=4)
 
         valid_loader = DataLoader(dataset=valid_dataset,
@@ -165,10 +181,13 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
             train_acc, train_worst, train_avg = compute_accuracy(model, train_loader, device=DEVICE)
             val_acc, val_worst, val_avg = compute_accuracy(model, valid_loader, device=DEVICE)
             test_acc, test_worst, test_avg = compute_accuracy(model, test_loader, device=DEVICE)
-            
-            if best_val < val_acc:
+            if args.type == 'baseline' and args.bias:
+                overall_acc = train_acc
+            else:
+                overall_acc = val_acc
+            if best_val < overall_acc:
                 print('Model saved at epoch', epoch)
-                best_val = val_acc
+                best_val = overall_acc
                 if args.type == 'margin':
                     save_state_dict(model.state_dict(), os.path.join('./', config.margin_path))
                 elif args.type == 'baseline':

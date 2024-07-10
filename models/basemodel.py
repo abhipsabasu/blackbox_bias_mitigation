@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class Network(nn.Module):
     # Baseline Network
     def __init__(self, model_name, num_classes, mlp_neurons=None):
@@ -11,7 +12,7 @@ class Network(nn.Module):
         self.num_classes = num_classes
         self.layer_1 = nn.Sequential(
                         nn.Linear(512, 32),
-                        nn.Tanh()
+                        nn.ReLU()
                     )
         self.classifier = nn.Linear(32, self.num_classes+1)
 

@@ -1,5 +1,6 @@
-import torch
 import numpy as np
+import torch
+
 
 def biased_acc(y, y_, u):
     # Computes worst and avg accuracies
@@ -16,6 +17,7 @@ def biased_acc(y, y_, u):
     acc[0, :] = 1 - acc[0, :]
     worst = np.min(acc)
     avg = np.mean(acc)
+    print(acc[0, 0], acc[0, 1], acc[1, 0], acc[1, 1])
     return worst, avg
 
 
