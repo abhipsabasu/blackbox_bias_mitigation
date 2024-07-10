@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import utils.config as config
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from utils.clustering import get_margins, obtain_and_evaluate_clusters
 from utils.dataset import CelebaDataset, WaterBirds, WaterBirdsActual
 from utils.utils import compute_accuracy, save_state_dict
@@ -74,7 +74,7 @@ def read_data(args):
         train_loader = DataLoader(dataset=train_dataset,
                             batch_size=batch_size,
                             shuffle=shuffle,
-                            sampler=sampler
+                            sampler=sampler,
                             num_workers=4)
 
         valid_loader = DataLoader(dataset=valid_dataset,
@@ -111,6 +111,25 @@ def read_data(args):
                             num_workers=4)
         return test_loader
 
+class GeneralizedCELoss(nn.Module):
+
+    def __init__(self, q=0.7):
+        super(GeneralizedCELoss, self).__init__()
+        self.q = q
+             
+    def forward(self, logits, targets):
+        p = F.softmax(logits, dim=1)
+        if np.isnan(p.mean().item()):
+            raise NameError('GCE_p')
+        Yg = torch.gather(p, 1, torch.unsqueeze(targets, 1))
+        # modify gradient of cross entropy
+        loss_weight = (Yg.squeeze().detach()**self.q)*self.q
+        if np.isnan(Yg.mean().item()):
+            raise NameError('GCE_Yg')
+  
+        loss = F.cross_entropy(logits, targets, reduction='none') * loss_weight
+        return loss
+
 
 def cross_entropy_loss_arc(logits, labels, **kwargs):
     """ Modified cross entropy loss to compute the margin loss"""
@@ -136,7 +155,7 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
     start_time = time.time()
     best_val = 0
     best_worst, best_avg = 999, 999
-    
+    gce_loss = GeneralizedCELoss()
     for epoch in range(NUM_EPOCHS):
         
         model.train()
@@ -164,13 +183,19 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
                 
                 optimizer.zero_grad()
                 cost.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
                 optimizer.step()
 
             elif args.type == 'baseline':
                 logits, _, _ = model(features)
-                cost = nn.CrossEntropyLoss()(logits, targets.long()) 
+                if args.bias:
+                    cost = gce_loss(logits, targets.long()).mean()
+                else:
+                    cost = nn.CrossEntropyLoss()(logits, targets.long()) 
                 optimizer.zero_grad()
                 cost.backward()
+                if not args.bias:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
                 optimizer.step()
         
         # Evaluate the run
@@ -195,7 +220,7 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
             
                 best_worst = test_worst
                 best_avg = test_avg
-            
+            print('Epoch', epoch)
             print('Train worst, avg, global acc', train_worst, train_avg, train_acc)
             print('Val worst, avg, global acc', val_worst, val_avg, val_acc)
             print('Test worst, avg, global acc', test_worst, test_avg, test_acc)

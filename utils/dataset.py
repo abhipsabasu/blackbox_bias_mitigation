@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 from torch.utils.data import Dataset
 
@@ -34,7 +35,7 @@ class WaterBirds(Dataset):
         if split == 'val':
             src_dir = '/data2/abhipsa/blackbox_bias_mitigation/blackbox-codebase/waterbirds_embeddings/all_balanced'
         if split == 'train':
-            if split == 'train':
+            
             # indices = np.load('/data2/abhipsa/blackbox_bias_mitigation/blackbox-codebase/3000_wb.npy')
             self.features = np.load(
                 os.path.join(src_dir, f"{split}_feats.npy")

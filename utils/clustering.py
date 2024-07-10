@@ -7,7 +7,6 @@ from sklearn.metrics.cluster import normalized_mutual_info_score as nmi
 def obtain_and_evaluate_clusters(train_loader, model_old, DEVICE):
     # obtain cluster NMIs to identify how well the clusters identify the bias vs the target attributes
     overall_feats, overall_targets, overall_z1, overall_preds, mean = extract_clusterFeatures(train_loader, model_old, DEVICE)
-    
     kmeans = KMeans(n_clusters=2).fit(overall_feats)
     kmeans_labels = np.expand_dims(kmeans.labels_, axis=1)
     
@@ -25,10 +24,14 @@ def obtain_and_evaluate_clusters(train_loader, model_old, DEVICE):
         
 def get_margins(train_loader, model_old, DEVICE, kmeans=None):
     # Calculate the margins here. Set K value.
-    K = 4
-    overall_feats, overall_targets, _, overall_preds, _ = extract_clusterFeatures(train_loader, model_old, DEVICE)
+    K = 6
+    overall_feats, overall_targets, overall_z1, overall_preds, _ = extract_clusterFeatures(train_loader, model_old, DEVICE)
     kmeans = KMeans(n_clusters=K, random_state=0, n_init=10).fit(overall_feats)
     groups = kmeans.labels_
+
+    target_nmi = nmi(overall_targets.squeeze().tolist(), kmeans.labels_.tolist())
+    bias_nmi = nmi(overall_z1.squeeze().tolist(), kmeans.labels_.tolist())
+    print(target_nmi, bias_nmi)
     margins = np.zeros((K, 2))
     
     overall_targets = overall_targets.squeeze()

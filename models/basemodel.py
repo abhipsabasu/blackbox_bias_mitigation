@@ -11,10 +11,10 @@ class Network(nn.Module):
         super(Network, self).__init__()
         self.num_classes = num_classes
         self.layer_1 = nn.Sequential(
-                        nn.Linear(512, 32),
+                        nn.Linear(512, 128),
                         nn.ReLU()
                     )
-        self.classifier = nn.Linear(32, self.num_classes+1)
+        self.classifier = nn.Linear(128, self.num_classes+1)
 
     def forward(self, feats_x):
         # feats_x are the previously stored blackbox features
