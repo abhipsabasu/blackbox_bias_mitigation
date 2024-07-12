@@ -5,7 +5,7 @@ mlp_neurons = 128
 # ----------------------Baseline Hyperparams-------------------------- #
 base_epochs = 100
 base_batch_size = 256
-base_lr = 0.01
+base_lr = 0.0001
 weight_decay = 1 # Vary this to train a bias-amplified model'
 
 # ----------------------Paths-------------------------- #
