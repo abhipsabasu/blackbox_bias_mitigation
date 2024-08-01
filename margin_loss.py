@@ -188,14 +188,14 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
 
             elif args.type == 'baseline':
                 logits, _, _ = model(features)
-                if args.bias:
-                    cost = gce_loss(logits, targets.long()).mean()
-                else:
-                    cost = nn.CrossEntropyLoss()(logits, targets.long()) 
+                # if args.bias:
+                #     cost = gce_loss(logits, targets.long()).mean()
+                # else:
+                cost = nn.CrossEntropyLoss()(logits, targets.long()) 
                 optimizer.zero_grad()
                 cost.backward()
-                if not args.bias:
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
+                # if not args.bias:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
                 optimizer.step()
         
         # Evaluate the run

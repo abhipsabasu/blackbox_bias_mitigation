@@ -7,6 +7,7 @@ from scipy.stats import entropy
 from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances
 from sklearn.metrics.cluster import normalized_mutual_info_score as nmi
+import matplotlib.pyplot as plt
 
 
 def silhouette_score(X, labels):
@@ -49,10 +50,18 @@ def silhouette_score(X, labels):
 def obtain_and_evaluate_clusters(train_loader, model_old, DEVICE):
     # obtain cluster NMIs to identify how well the clusters identify the bias vs the target attributes
     overall_feats, overall_targets, overall_z1, overall_preds, mean = extract_clusterFeatures(train_loader, model_old, DEVICE)
-    for k in range(2, 3):
-        kmeans = KMeans(n_clusters=k, n_init=10).fit(overall_feats)
-        kmeans_labels = np.expand_dims(kmeans.labels_, axis=1)
-        print(k, silhouette_score(overall_feats, kmeans.labels_))
+    scores = []
+    kmeans = KMeans(n_clusters=2, n_init=10).fit(overall_feats)
+    kmeans_labels = np.expand_dims(kmeans.labels_, axis=1)
+    # for k in range(2, 11):
+    #     kmeans = KMeans(n_clusters=k, n_init=10).fit(overall_feats)
+    #     kmeans_labels = np.expand_dims(kmeans.labels_, axis=1)
+    #     scores.append(silhouette_score(overall_feats, kmeans.labels_))
+    # plt.plot([i for i in range(2, 11)], scores)
+    # plt.xlabel('K values')
+    # plt.ylabel('silhoutte scores')
+    # plt.savefig('clustering_plot.png')
+        # print(k, silhouette_score(overall_feats, kmeans.labels_))
     # Calculate for each bias label, what is the proportion of the pseudo labels
 
     evaluate_cluster(overall_z1, None, kmeans_labels)
@@ -63,12 +72,13 @@ def obtain_and_evaluate_clusters(train_loader, model_old, DEVICE):
     #Calculate NMIs
     target_nmi = nmi(overall_targets.squeeze().tolist(), kmeans.labels_.tolist())
     bias_nmi = nmi(overall_z1.squeeze().tolist(), kmeans.labels_.tolist())
-    np.set_printoptions(suppress=True, precision=8)
-    U, S, Vt = np.linalg.svd(overall_feats, full_matrices=True)
-    S = S / S.sum()
-    entropy_value = entropy(S, base=2)
+    print(target_nmi, bias_nmi)
+    # np.set_printoptions(suppress=True, precision=8)
+    # U, S, Vt = np.linalg.svd(overall_feats, full_matrices=True)
+    # S = S / S.sum()
+    # entropy_value = entropy(S, base=2)
 
-    print(entropy_value)
+    # print(entropy_value)
 
 
         
@@ -86,7 +96,7 @@ def get_margins(train_loader, model_old, DEVICE, kmeans=None):
     
     overall_targets = overall_targets.squeeze()
     final_targets = overall_targets
-    overall_preds = overall_preds.squeeze()
+    # overall_preds = overall_preds.squeeze()
 
     for i in range(K):
         for j in range(2):
@@ -94,18 +104,18 @@ def get_margins(train_loader, model_old, DEVICE, kmeans=None):
             
     normalized_margins = margins / margins.sum(1, keepdims=True)
     
-    if os.path.exists('wb_cluster.csv'):
-        df = pd.read_csv('wb_cluster.csv')
-    else:
-        df = pd.DataFrame()
-        df['Bias'] = overall_z1.squeeze().tolist()
-        df['Targets'] = overall_targets.squeeze().tolist()
+    # if os.path.exists('wb_cluster.csv'):
+    #     df = pd.read_csv('wb_cluster.csv')
+    # else:
+    #     df = pd.DataFrame()
+    #     df['Bias'] = overall_z1.squeeze().tolist()
+    #     df['Targets'] = overall_targets.squeeze().tolist()
     
-    print(margins)
-    print(normalized_margins)
-    margin_class = normalized_margins[groups, overall_targets]
-    df[f'margins@{K}'] = margin_class.tolist()
-    df.to_csv('wb_cluster.csv', index=False)
+    # print(margins)
+    # print(normalized_margins)
+    # margin_class = normalized_margins[groups, overall_targets]
+    # df[f'margins@{K}'] = margin_class.tolist()
+    # df.to_csv('wb_cluster.csv', index=False)
     return kmeans, margins, normalized_margins
 
 

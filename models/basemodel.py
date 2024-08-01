@@ -12,7 +12,7 @@ class Network(nn.Module):
         self.num_classes = num_classes
         self.layer_1 = nn.Sequential(
                         nn.Linear(512, 128),
-                        nn.ReLU()
+                        nn.Tanh()
                     )
         self.classifier = nn.Linear(128, self.num_classes+1)
 

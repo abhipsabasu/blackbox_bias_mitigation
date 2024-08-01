@@ -4,9 +4,9 @@ mlp_neurons = 128
 
 # ----------------------Baseline Hyperparams-------------------------- #
 base_epochs = 100
-base_batch_size = 256
-base_lr = 0.0001
-weight_decay = 1 # Vary this to train a bias-amplified model'
+base_batch_size = 64
+base_lr = 0.01
+weight_decay = 0.01 # Vary this to train a bias-amplified model'
 
 # ----------------------Paths-------------------------- #
 basemodel_path = 'basemodel.pth' #'{}_{}_base_balanced.pth'.format(bias_attribute, target_attribute)
