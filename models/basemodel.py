@@ -39,7 +39,7 @@ class NetworkMargin(nn.Module):
         self.num_classes = num_classes
 
         self.new_feats = nn.Sequential(
-                        nn.Linear(512, mlp_neurons),
+                        nn.Linear(768, mlp_neurons),
                         nn.ReLU(),
                 )
 
@@ -47,7 +47,7 @@ class NetworkMargin(nn.Module):
         self.weight1 = nn.Parameter(torch.FloatTensor(num_classes+1, mlp_neurons))
         nn.init.xavier_uniform_(self.weight1)
         self.device = DEVICE
-        self.std = 0.2 # Set the Gaussian randomization standard deviation here
+        self.std = 0.3 # Set the Gaussian randomization standard deviation here
         self.easy_margin = easy_margin
 
     def forward(self, feats_x, m=None, s=None):

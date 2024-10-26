@@ -3,10 +3,10 @@ num_class = 1
 mlp_neurons = 128
 
 # ----------------------Baseline Hyperparams-------------------------- #
-base_epochs = 100
+base_epochs = 50
 base_batch_size = 64
 base_lr = 0.01
-weight_decay = 0.01 # Vary this to train a bias-amplified model'
+weight_decay = 1e-5 # Vary this to train a bias-amplified model'
 
 # ----------------------Paths-------------------------- #
 basemodel_path = 'basemodel.pth' #'{}_{}_base_balanced.pth'.format(bias_attribute, target_attribute)
@@ -26,3 +26,7 @@ partition_path = '/path/to/dataset_partition'
 attr_path = '/path/to/attributes/'
 target_attribute = 'Blond_Hair'
 bias_attribute = 'Male'
+celeba_path = '/path/to/celeba_traintest_embeddings'
+celeba_val_path = '/path/to/celeba_val_balanced_embeddings'
+waterbirds_path = '/path/to/waterbirds_traintest_embeddings'
+waterbirds_val_path = '/path/to/waterbirds_val_balanced_embeddings'

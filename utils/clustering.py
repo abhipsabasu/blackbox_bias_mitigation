@@ -5,64 +5,21 @@ import pandas as pd
 import utils.config as config
 from scipy.stats import entropy
 from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture
 from sklearn.metrics import pairwise_distances
 from sklearn.metrics.cluster import normalized_mutual_info_score as nmi
 import matplotlib.pyplot as plt
-
-
-def silhouette_score(X, labels):
-    # Compute the pairwise distance matrix
-    distances = pairwise_distances(X, metric='euclidean')
-    
-    # Number of samples
-    n_samples = X.shape[0]
-    
-    # Initialize arrays to store a(i) and b(i) for each sample
-    a = np.zeros(n_samples)
-    b = np.zeros(n_samples)
-    
-    for i in range(n_samples):
-        # Points in the same cluster
-        same_cluster = labels == labels[i]
-        same_cluster_count = np.sum(same_cluster)
-        
-        # If there's only one point in the cluster, silhouette score is zero (isolated point)
-        if same_cluster_count == 1:
-            a[i] = 0.0
-        else:
-            # Compute a(i) as the mean distance to other points in the same cluster
-            a[i] = np.sum(distances[i][same_cluster]) / (same_cluster_count - 1)
-        
-        # Compute b(i) as the mean distance to the nearest cluster
-        b[i] = np.min([
-            np.mean(distances[i][labels == label])
-            for label in np.unique(labels)
-            if label != labels[i]
-        ])
-    
-    # Compute s(i) for each sample
-    silhouette_scores = (b - a) / np.maximum(a, b)
-    
-    # Return the mean silhouette score
-    return np.mean(silhouette_scores)
+from scipy.spatial.distance import cdist
+from umap import UMAP
 
 
 def obtain_and_evaluate_clusters(train_loader, model_old, DEVICE):
     # obtain cluster NMIs to identify how well the clusters identify the bias vs the target attributes
     overall_feats, overall_targets, overall_z1, overall_preds, mean = extract_clusterFeatures(train_loader, model_old, DEVICE)
     scores = []
+    
     kmeans = KMeans(n_clusters=2, n_init=10).fit(overall_feats)
     kmeans_labels = np.expand_dims(kmeans.labels_, axis=1)
-    # for k in range(2, 11):
-    #     kmeans = KMeans(n_clusters=k, n_init=10).fit(overall_feats)
-    #     kmeans_labels = np.expand_dims(kmeans.labels_, axis=1)
-    #     scores.append(silhouette_score(overall_feats, kmeans.labels_))
-    # plt.plot([i for i in range(2, 11)], scores)
-    # plt.xlabel('K values')
-    # plt.ylabel('silhoutte scores')
-    # plt.savefig('clustering_plot.png')
-        # print(k, silhouette_score(overall_feats, kmeans.labels_))
-    # Calculate for each bias label, what is the proportion of the pseudo labels
 
     evaluate_cluster(overall_z1, None, kmeans_labels)
     print()
@@ -73,25 +30,18 @@ def obtain_and_evaluate_clusters(train_loader, model_old, DEVICE):
     target_nmi = nmi(overall_targets.squeeze().tolist(), kmeans.labels_.tolist())
     bias_nmi = nmi(overall_z1.squeeze().tolist(), kmeans.labels_.tolist())
     print(target_nmi, bias_nmi)
-    # np.set_printoptions(suppress=True, precision=8)
-    # U, S, Vt = np.linalg.svd(overall_feats, full_matrices=True)
-    # S = S / S.sum()
-    # entropy_value = entropy(S, base=2)
+    
 
-    # print(entropy_value)
-
-
-        
 def get_margins(train_loader, model_old, DEVICE, kmeans=None):
     # Calculate the margins here. Set K value.
-    K = 6
+    K = 4
     overall_feats, overall_targets, overall_z1, overall_preds, _ = extract_clusterFeatures(train_loader, model_old, DEVICE)
     kmeans = KMeans(n_clusters=K, random_state=0, n_init=10).fit(overall_feats)
     groups = kmeans.labels_
 
     target_nmi = nmi(overall_targets.squeeze().tolist(), kmeans.labels_.tolist())
     bias_nmi = nmi(overall_z1.squeeze().tolist(), kmeans.labels_.tolist())
-    print(target_nmi, bias_nmi)
+    
     margins = np.zeros((K, 2))
     
     overall_targets = overall_targets.squeeze()
@@ -104,18 +54,7 @@ def get_margins(train_loader, model_old, DEVICE, kmeans=None):
             
     normalized_margins = margins / margins.sum(1, keepdims=True)
     
-    # if os.path.exists('wb_cluster.csv'):
-    #     df = pd.read_csv('wb_cluster.csv')
-    # else:
-    #     df = pd.DataFrame()
-    #     df['Bias'] = overall_z1.squeeze().tolist()
-    #     df['Targets'] = overall_targets.squeeze().tolist()
-    
-    # print(margins)
-    # print(normalized_margins)
-    # margin_class = normalized_margins[groups, overall_targets]
-    # df[f'margins@{K}'] = margin_class.tolist()
-    # df.to_csv('wb_cluster.csv', index=False)
+    print(normalized_margins)
     return kmeans, margins, normalized_margins
 
 
@@ -165,7 +104,7 @@ def extract_clusterFeatures(train_loader, model_old, DEVICE):
 
     mean = overall_feats.mean(axis=0)
     mean = np.expand_dims(mean, axis=0)
-    
+    # overall_feats = overall_feats - mean
     return overall_feats, overall_targets, overall_z1, overall_preds, mean
 
 

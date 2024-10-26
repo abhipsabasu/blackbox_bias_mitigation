@@ -146,7 +146,7 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
         ''' Comment lines 108-110 only if the bias-amplified model is not required.'''
         model_name = config.basemodel_path
         with torch.no_grad():
-            baseline.load_state_dict(torch.load(os.path.join('./', model_name)))
+            baseline.load_state_dict(torch.load(os.path.join('./', model_name), map_location=DEVICE))
 
         baseline.eval()
         baseline = baseline.to(DEVICE)
@@ -155,7 +155,7 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
     start_time = time.time()
     best_val = 0
     best_worst, best_avg = 999, 999
-    gce_loss = GeneralizedCELoss()
+    
     for epoch in range(NUM_EPOCHS):
         
         model.train()
@@ -188,14 +188,10 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
 
             elif args.type == 'baseline':
                 logits, _, _ = model(features)
-                # if args.bias:
-                #     cost = gce_loss(logits, targets.long()).mean()
-                # else:
+            
                 cost = nn.CrossEntropyLoss()(logits, targets.long()) 
                 optimizer.zero_grad()
                 cost.backward()
-                # if not args.bias:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
                 optimizer.step()
         
         # Evaluate the run
@@ -237,7 +233,7 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
 
 def eval(model, data_loader, path):
     
-    model.load_state_dict(torch.load(os.path.join('./', path))) 
+    model.load_state_dict(torch.load(os.path.join('./', path), map_location=DEVICE)) 
     model.eval()
 
     with torch.no_grad():
@@ -275,7 +271,7 @@ if __name__ == '__main__':
             model.to(DEVICE)
             lr = config.base_lr
             weight_decay = config.weight_decay
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay) #, momentum=0.9)
             epochs = config.base_epochs
             train(model, config.base_epochs, optimizer, DEVICE, train_loader, valid_loader, test_loader, args)
         elif args.type == 'margin':
@@ -284,7 +280,7 @@ if __name__ == '__main__':
             model = model.to(DEVICE)
             lr = config.base_lr
             weight_decay = config.weight_decay
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay) #, momentum=0.9)
             train(model, config.base_epochs, optimizer, DEVICE, train_loader, valid_loader, test_loader, args)
         
     elif args.clustering:
@@ -332,3 +328,4 @@ if __name__ == '__main__':
         else:
             eval(model, test_loader, config.margin_path)
     
+    print("VRAM taken: ", torch.cuda.max_memory_allocated() / 1024**2)
