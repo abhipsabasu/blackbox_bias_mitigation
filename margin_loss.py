@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import utils.config as config
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from utils.clustering import get_margins, obtain_and_evaluate_clusters
-from utils.dataset import CelebaDataset, WaterBirds, WaterBirdsActual
+from utils.dataset import CelebaDataset, WaterBirds
 from utils.utils import compute_accuracy, save_state_dict
 
 from models.basemodel import Network, NetworkMargin
@@ -141,7 +141,7 @@ def cross_entropy_loss_arc(logits, labels, **kwargs):
 def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test_loader, args):
     # training loop
     if args.type == 'margin':
-        baseline = Network(config.model_name, config.num_class, config.mlp_neurons)
+        baseline = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
 
         ''' Comment lines 108-110 only if the bias-amplified model is not required.'''
         model_name = config.basemodel_path
@@ -177,7 +177,7 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
                 margins = torch.from_numpy(margins)
                 margins = margins.to(DEVICE)
                 features = features.to(torch.float32)
-                logits, _, _, _, _ = model(features, margins, s=8)
+                logits, _, _, _, _ = model(features, margins, s=config.scale)
                 
                 cost = cross_entropy_loss_arc(logits, one_hot.float())
                 
@@ -267,20 +267,26 @@ if __name__ == '__main__':
         train_loader, valid_loader, test_loader = read_data(args)
         if args.type == 'baseline':
             # Baseline training
-            model = Network(config.model_name, config.num_class, config.mlp_neurons)
+            model = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
             model.to(DEVICE)
             lr = config.base_lr
             weight_decay = config.weight_decay
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay) #, momentum=0.9)
+            if config.opt_b == 'sgd':
+                optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay) #, momentum=0.9)
+            else:
+                optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
             epochs = config.base_epochs
             train(model, config.base_epochs, optimizer, DEVICE, train_loader, valid_loader, test_loader, args)
         elif args.type == 'margin':
             # Margin loss
-            model = NetworkMargin(config.model_name, config.num_class, DEVICE, config.mlp_neurons)
+            model = NetworkMargin(config.model_name, config.num_class, DEVICE, config.std, config.mlp_neurons, config.hid_dim)
             model = model.to(DEVICE)
             lr = config.base_lr
             weight_decay = config.weight_decay
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay) #, momentum=0.9)
+            if config.opt_m == 'sgd':
+                optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay) #, momentum=0.9)
+            else:
+                optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
             train(model, config.base_epochs, optimizer, DEVICE, train_loader, valid_loader, test_loader, args)
         
     elif args.clustering:

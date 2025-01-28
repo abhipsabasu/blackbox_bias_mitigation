@@ -34,14 +34,15 @@ def obtain_and_evaluate_clusters(train_loader, model_old, DEVICE):
 
 def get_margins(train_loader, model_old, DEVICE, kmeans=None):
     # Calculate the margins here. Set K value.
-    K = 4
+    K = config.K
+
     overall_feats, overall_targets, overall_z1, overall_preds, _ = extract_clusterFeatures(train_loader, model_old, DEVICE)
     kmeans = KMeans(n_clusters=K, random_state=0, n_init=10).fit(overall_feats)
     groups = kmeans.labels_
 
     target_nmi = nmi(overall_targets.squeeze().tolist(), kmeans.labels_.tolist())
     bias_nmi = nmi(overall_z1.squeeze().tolist(), kmeans.labels_.tolist())
-    
+    print(target_nmi, bias_nmi)
     margins = np.zeros((K, 2))
     
     overall_targets = overall_targets.squeeze()

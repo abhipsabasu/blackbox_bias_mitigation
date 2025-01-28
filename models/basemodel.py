@@ -7,14 +7,14 @@ import torch.nn.functional as F
 
 class Network(nn.Module):
     # Baseline Network
-    def __init__(self, model_name, num_classes, mlp_neurons=None):
+    def __init__(self, model_name, num_classes, mlp_neurons=None, hid_dim=None):
         super(Network, self).__init__()
         self.num_classes = num_classes
         self.layer_1 = nn.Sequential(
-                        nn.Linear(512, 128),
+                        nn.Linear(hid_dim, mlp_neurons),
                         nn.Tanh()
                     )
-        self.classifier = nn.Linear(128, self.num_classes+1)
+        self.classifier = nn.Linear(mlp_neurons, self.num_classes+1)
 
     def forward(self, feats_x):
         # feats_x are the previously stored blackbox features
@@ -34,20 +34,20 @@ class NetworkMargin(nn.Module):
             m: margin
             cos(theta + m)
         """
-    def __init__(self, model_name, num_classes, DEVICE, mlp_neurons=None, easy_margin=None):
+    def __init__(self, model_name, num_classes, DEVICE, std, mlp_neurons=None, hid_dim=None, easy_margin=None):
         super(NetworkMargin, self).__init__()
         self.num_classes = num_classes
 
         self.new_feats = nn.Sequential(
-                        nn.Linear(768, mlp_neurons),
+                        nn.Linear(hid_dim, mlp_neurons),
                         nn.ReLU(),
                 )
 
-        self.s = 1
+        # self.s = 1
         self.weight1 = nn.Parameter(torch.FloatTensor(num_classes+1, mlp_neurons))
         nn.init.xavier_uniform_(self.weight1)
         self.device = DEVICE
-        self.std = 0.3 # Set the Gaussian randomization standard deviation here
+        self.std = std # Set the Gaussian randomization standard deviation here
         self.easy_margin = easy_margin
 
     def forward(self, feats_x, m=None, s=None):
